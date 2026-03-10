@@ -30,6 +30,11 @@ const Login: React.FC = () => {
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('id', res.data.user._id);
 
+      const coords = res.data.user?.location?.coordinates;
+      if (Array.isArray(coords) && coords.length === 2) {
+        localStorage.setItem('userLocation', JSON.stringify(coords));
+      }
+
       navigate('/'); 
       toast.success('Login Successful')
     } catch (error) {

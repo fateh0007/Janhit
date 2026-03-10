@@ -203,31 +203,85 @@ const MapPage: React.FC = () => {
     // }, []);
 
     useEffect(() => {
-    const currentPos: [number, number] = [31.481124, 76.190682]; // IIIT Una coordinates
-    setPosition(currentPos);
+        const initializePosition = async () => {
+            const stored = localStorage.getItem("userLocation");
+            if (stored) {
+                try {
+                    const coords = JSON.parse(stored);
+                    if (Array.isArray(coords) && coords.length === 2) {
+                        const [lng, lat] = coords;
+                        if (typeof lng === "number" && typeof lat === "number") {
+                            setPosition([lat, lng]);
+                            return;
+                        }
+                    }
+                } catch {
+                }
+            }
 
-    const fetchIssues = async () => {
-        try {
-            const response = await axios.get(`${API}/getAllproblems`);
+            const token = localStorage.getItem("token");
+            const userId = localStorage.getItem("id");
+            if (token && userId) {
+                try {
+                    const res = await axios.get(`${API}/userProfile/${userId}`, {
+                        headers: { Authorization: `Bearer ${token}` },
+                    });
+                    const coords = res.data?.user?.location?.coordinates;
+                    if (Array.isArray(coords) && coords.length === 2) {
+                        const [lng, lat] = coords;
+                        if (typeof lng === "number" && typeof lat === "number") {
+                            setPosition([lat, lng]);
+                            localStorage.setItem("userLocation", JSON.stringify(coords));
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error fetching user location from profile:", error);
+                }
+            }
 
-            const fetchedIssues = response.data.problems.map((item: any) => ({
-                id: item._id,
-                position: [item.location.coordinates[1], item.location.coordinates[0]],
-                description: item.description,
-                severity: item.averageRating || 1,
-                createdBy: item.createdBy,
-                comments: [],
-                address: item.address,
-                media: item.media || [],
-            }));
-            setIssues(fetchedIssues);
-        } catch (error) {
-            console.error("Error fetching issues:", error);
-        }
-    };
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        const currentPos: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+                        setPosition(currentPos);
+                    },
+                    (err) => {
+                        console.error(err);
+                        setPosition([28.6139, 77.2090]); // Delhi fallback
+                    }
+                );
+            } else {
+                setPosition([28.6139, 77.2090]);
+            }
+        };
 
-    fetchIssues();
-}, []);
+        initializePosition();
+    }, []);
+
+    useEffect(() => {
+        const fetchIssues = async () => {
+            try {
+                const response = await axios.get(`${API}/getAllproblems`);
+
+                const fetchedIssues = response.data.problems.map((item: any) => ({
+                    id: item._id,
+                    position: [item.location.coordinates[1], item.location.coordinates[0]],
+                    description: item.description,
+                    severity: item.averageRating || 1,
+                    createdBy: item.createdBy,
+                    comments: [],
+                    address: item.address,
+                    media: item.media || [],
+                }));
+                setIssues(fetchedIssues);
+            } catch (error) {
+                console.error("Error fetching issues:", error);
+            }
+        };
+
+        fetchIssues();
+    }, []);
 
 
     // Clustering algorithm for heatmap
