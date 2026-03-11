@@ -38,11 +38,24 @@ const uploadToCloudinary = async (file, folder = 'campaigns') => {
     });
 };
 
+// Helper: parse field from FormData (can be stringified JSON or already object)
+const parseBodyField = (value) => {
+    if (value === undefined || value === null) return value;
+    if (typeof value === 'string') {
+        try {
+            return JSON.parse(value);
+        } catch {
+            return value;
+        }
+    }
+    return value;
+};
+
 // Create new campaign
 export const createCampaign = async (req, res) => {
     try {
         const userId = req.params.userId;
-        const {
+        let {
             title,
             description,
             shortDescription,
@@ -60,6 +73,14 @@ export const createCampaign = async (req, res) => {
             socialLinks
         } = req.body;
 
+        // Parse FormData JSON strings
+        location = parseBodyField(location);
+        campaignDuration = parseBodyField(campaignDuration);
+        contactInfo = parseBodyField(contactInfo);
+        bankDetails = parseBodyField(bankDetails);
+        tags = parseBodyField(tags);
+        socialLinks = parseBodyField(socialLinks);
+
         // Validate user exists
         const user = await User.findById(userId);
         if (!user) {
@@ -69,10 +90,37 @@ export const createCampaign = async (req, res) => {
             });
         }
 
-        // Parse location coordinates if provided as string
+        // Build location to match schema: address, city, state, geometry (GeoJSON for 2dsphere index)
         let parsedLocation = location;
-        if (typeof location.coordinates === 'string') {
-            parsedLocation.coordinates = JSON.parse(location.coordinates);
+        if (location && typeof location === 'object') {
+            const coords = Array.isArray(location.coordinates) ? location.coordinates : (location.coordinates?.coordinates || location.geometry?.coordinates || []);
+            parsedLocation = {
+                address: location.address || '',
+                city: location.city || '',
+                state: location.state || '',
+                country: location.country || 'India',
+                geometry: {
+                    type: 'Point',
+                    coordinates: coords.length === 2 ? coords : [0, 0]
+                }
+            };
+        }
+
+        // Parse and validate campaign end date
+        const endDateStr = campaignDuration?.endDate;
+        const endDate = endDateStr ? new Date(endDateStr) : null;
+        if (!endDate || isNaN(endDate.getTime())) {
+            return res.status(400).json({
+                success: false,
+                message: 'Valid campaign end date is required'
+            });
+        }
+
+        if (!parsedLocation?.address?.trim() || !parsedLocation?.city?.trim() || !parsedLocation?.state?.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: 'Location address, city, and state are required'
+            });
         }
 
         // Upload images
@@ -112,16 +160,16 @@ export const createCampaign = async (req, res) => {
             images: imageUrls,
             documents: documentUrls,
             createdBy: userId,
-            organizationName,
-            organizationType,
-            contactInfo: JSON.parse(contactInfo),
-            bankDetails: JSON.parse(bankDetails),
+            organizationName: organizationName || '',
+            organizationType: organizationType || 'individual',
+            contactInfo: contactInfo || {},
+            bankDetails: bankDetails || {},
             campaignDuration: {
                 startDate: new Date(),
-                endDate: new Date(campaignDuration.endDate)
+                endDate
             },
-            tags: tags ? JSON.parse(tags) : [],
-            socialLinks: socialLinks ? JSON.parse(socialLinks) : {},
+            tags: Array.isArray(tags) ? tags : [],
+            socialLinks: socialLinks && typeof socialLinks === 'object' ? socialLinks : {},
             status: 'pending_review'
         });
 

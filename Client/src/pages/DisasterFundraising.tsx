@@ -12,6 +12,7 @@ import {
     Plus
 } from 'lucide-react';
 import CreateCampaignModal from '../components/CreateCampaignModal';
+import { CAMPAIGN_API } from '../ApiUri';
 
 interface FundraisingCampaign {
     id: string;
@@ -66,7 +67,7 @@ const DisasterFundraising: React.FC = () => {
     // Fetch campaigns from backend
     const fetchCampaigns = async () => {
         try {
-            const response = await axios.get('http://localhost:8000/api/v1/campaign/campaigns', {
+            const response = await axios.get(`${CAMPAIGN_API}/campaigns`, {
                 params: {
                     status: 'active',
                     category: selectedCategory !== 'all' ? selectedCategory : undefined,
@@ -82,8 +83,13 @@ const DisasterFundraising: React.FC = () => {
                     title: campaign.title,
                     description: campaign.shortDescription || campaign.description,
                     disasterType: campaign.disasterType,
-                    location: `${campaign.location.city}, ${campaign.location.state}`,
-                    coordinates: campaign.location.coordinates.coordinates,
+                    location: `${campaign.location?.city ?? ''}, ${campaign.location?.state ?? ''}`,
+                    coordinates: (() => {
+                        const geom = campaign.location?.geometry?.coordinates;
+                        const legacy = campaign.location?.coordinates?.coordinates;
+                        const c = geom || legacy || [];
+                        return c.length === 2 ? [c[1], c[0]] : [0, 0]; // [lat, lng] for map
+                    })(),
                     targetAmount: campaign.targetAmount,
                     raisedAmount: campaign.raisedAmount,
                     donorCount: campaign.donorCount,

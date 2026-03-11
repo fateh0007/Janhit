@@ -9,6 +9,7 @@ import {
     CreditCard
 } from 'lucide-react';
 import axios from 'axios';
+import { CAMPAIGN_API } from '../ApiUri';
 
 interface CreateCampaignModalProps {
     isOpen: boolean;
@@ -131,7 +132,8 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
         switch (step) {
             case 1:
                 return formData.title && formData.description && formData.shortDescription && 
-                       formData.disasterType && formData.category && formData.targetAmount;
+                       formData.disasterType && formData.category && formData.targetAmount &&
+                       formData.campaignDuration.endDate;
             case 2:
                 return formData.location.address && formData.location.city && formData.location.state &&
                        formData.contactInfo.phone && formData.contactInfo.email;
@@ -200,7 +202,7 @@ const CreateCampaignModal: React.FC<CreateCampaignModalProps> = ({ isOpen, onClo
             }
 
             const response = await axios.post(
-                `http://localhost:8000/api/v1/campaign/campaigns/create/${userId}`,
+                `${CAMPAIGN_API}/campaigns/create/${userId}`,
                 formDataToSend,
                 {
                     headers: {

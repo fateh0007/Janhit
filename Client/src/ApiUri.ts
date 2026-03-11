@@ -5,3 +5,4 @@ const API_BASE_URL = isDev
 
 export const API: string = `${API_BASE_URL}/api/v1/users`;
 export const FEED_API: string = `${API_BASE_URL}/api/v1/feed`;
+export const CAMPAIGN_API: string = `${API_BASE_URL}/api/v1/campaign`;

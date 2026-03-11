@@ -117,7 +117,8 @@ const campaignSchema = new mongoose.Schema({
             type: String,
             default: 'India'
         },
-        coordinates: {
+        // GeoJSON for 2dsphere index – must be top-level type + coordinates
+        geometry: {
             type: {
                 type: String,
                 enum: ['Point'],
@@ -249,8 +250,8 @@ const campaignSchema = new mongoose.Schema({
     }
 });
 
-// Indexes for better query performance
-campaignSchema.index({ location: '2dsphere' });
+// Indexes for better query performance (geo index on GeoJSON field only)
+campaignSchema.index({ 'location.geometry': '2dsphere' });
 campaignSchema.index({ disasterType: 1, status: 1 });
 campaignSchema.index({ category: 1, status: 1 });
 campaignSchema.index({ urgencyLevel: 1, status: 1 });
